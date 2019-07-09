@@ -2,10 +2,14 @@
 	"name": "@rvx/rc",
 	"version": "1.0.0",
 	"description": "rvx reactive core",
-	"author": "Max J. Polster",
-	"license": "MIT",
+	"scripts": {
+		"build": "tsc",
+		"lint": "tslint -p tsconfig.json"
+	},
 	"devDependencies": {
 		"tslint": "^5.18.0",
 		"typescript": "^3.5.3"
-	}
+	},
+	"author": "Max J. Polster",
+	"license": "MIT"
 }
