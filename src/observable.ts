@@ -9,7 +9,7 @@ export interface Observer<T> {
 	reject(error: any): void;
 }
 
-export type ObservableOperator<T, U> = (source: ObservableLike<T>) => U;
+export type ObservableOperator<T, U, A extends any[]> = (source: ObservableLike<T>, ...args: A) => U;
 
 const OBSERVERS = Symbol("observers");
 const STARTED = Symbol("started");
@@ -75,7 +75,7 @@ export class Observable<T> implements ObservableLike<T> {
 		};
 	}
 
-	public pipe<U>(operator: ObservableOperator<T, U>) {
-		return operator(this);
+	public pipe<U, A extends any[]>(operator: ObservableOperator<T, U, A>, ...args: A) {
+		return operator(this, ...args);
 	}
 }

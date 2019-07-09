@@ -38,7 +38,7 @@ export interface ReadonlyUnit<T> extends Unit<T> {
 	readonly value: T;
 }
 
-export type PatchObservableOperator<T, U> = (source: PatchObservableLike<T>) => U;
+export type PatchObservableOperator<T, U, A extends any[]> = (source: PatchObservableLike<T>, ...args: A) => U;
 
 const OBSERVERS = Symbol("observers");
 const STARTED = Symbol("started");
@@ -104,7 +104,7 @@ export class PatchObservable<T> implements PatchObservableLike<T> {
 		};
 	}
 
-	public pipe<U>(operator: PatchObservableOperator<T, U>) {
-		return operator(this);
+	public pipe<U, A extends any[]>(operator: PatchObservableOperator<T, U, A>, ...args: A) {
+		return operator(this, ...args);
 	}
 }
