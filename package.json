@@ -1,0 +1,11 @@
+{
+	"name": "@rvx/rc",
+	"version": "1.0.0",
+	"description": "rvx reactive core",
+	"author": "Max J. Polster",
+	"license": "MIT",
+	"devDependencies": {
+		"tslint": "^5.18.0",
+		"typescript": "^3.5.3"
+	}
+}
