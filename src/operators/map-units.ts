@@ -1,5 +1,6 @@
 import { Patch, PatchObservable, PatchObservableLike, Unit, UnitRange } from "../patch-observable";
 
+/** Map each unit value from the source sequence. */
 export function mapUnits<T, U>(source: PatchObservableLike<T>, map: (value: T) => U): PatchObservableLike<U> {
 	let resolved = false;
 	const range: UnitRange<U> = { next: null, prev: null };

@@ -1,11 +1,16 @@
 import { dispose, DisposeLogic } from "./disposable";
 
+/** Represents a value that can be replaced over time. */
 export interface ObservableLike<T> {
+	/** Subscribe to updates. */
 	subscribe(observer?: Partial<Observer<T>> | ((value: T) => void)): DisposeLogic;
 }
 
+/** An observer for a value that can be replaced over time. */
 export interface Observer<T> {
+	/** Indicate, that the value has been replaced. */
 	resolve(value: T): void;
+	/** Indicate, that an error occurred. The target value stays the same. */
 	reject(error: any): void;
 }
 
@@ -15,6 +20,7 @@ const OBSERVERS = Symbol("observers");
 const STARTED = Symbol("started");
 const DISPOSAL = Symbol("disposal");
 
+/** Represents a value that can be replaced over time. */
 export class Observable<T> implements ObservableLike<T> {
 	public constructor(
 		awake?: (observer: Observer<T>) => DisposeLogic,
@@ -38,6 +44,7 @@ export class Observable<T> implements ObservableLike<T> {
 	protected onSubscribe(observer: Partial<Observer<T>>) {
 	}
 
+	/** Notify all observers that the value has been replaced. */
 	protected notifyResolve(value: T) {
 		for (const observer of this[OBSERVERS]) {
 			if (observer.resolve) {
@@ -46,6 +53,7 @@ export class Observable<T> implements ObservableLike<T> {
 		}
 	}
 
+	/** Notify all observers that an error occurred. */
 	protected notifyReject(error: any) {
 		for (const observer of this[OBSERVERS]) {
 			if (observer.reject) {
@@ -75,6 +83,7 @@ export class Observable<T> implements ObservableLike<T> {
 		};
 	}
 
+	/** Apply an operator to this observable and get the result. */
 	public pipe<U, A extends any[]>(operator: ObservableOperator<T, U, A>, ...args: A) {
 		return operator(this, ...args);
 	}
