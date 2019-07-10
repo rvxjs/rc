@@ -4,11 +4,22 @@
 	"description": "rvx reactive core",
 	"scripts": {
 		"build": "tsc",
-		"lint": "tslint -p tsconfig.json"
+		"build:watch": "tsc -w",
+		"lint": "tslint -p tsconfig.json",
+		"test": "rimraf dist/test && tsc -p tsconfig-test.json && ava -v",
+		"test:watch": "rimraf dist/test && tsc -p tsconfig-test.json && concurrently \"tsc -p tsconfig-test.json -w\" \"ava -w -v\""
 	},
 	"devDependencies": {
+		"ava": "^2.2.0",
+		"concurrently": "^4.1.1",
+		"rimraf": "^2.6.3",
 		"tslint": "^5.18.0",
 		"typescript": "^3.5.3"
+	},
+	"ava": {
+		"files": [
+			"./dist/test/test/**/*.js"
+		]
 	},
 	"author": "Max J. Polster",
 	"license": "MIT"
