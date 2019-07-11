@@ -1,4 +1,4 @@
-import { Patch, Unit, UnitRange } from "../patch-observable";
+import { Patch, PatchObservableLike, Unit, UnitRange } from "../patch-observable";
 
 export class PatchTypeError extends TypeError {
 	public constructor(public readonly patch: Patch<any>, message?: string) {
@@ -48,6 +48,9 @@ function validateUnitRange(range: UnitRange<any>) {
 	let unit = range.next;
 	let prev: Unit<any> = null;
 	do {
+		if (!unit) {
+			throw new RangeUnitTypeError(range, "Unit chain ended before the range end.");
+		}
 		if (units.has(unit)) {
 			throw new RangeUnitTypeError(range, "Circular range");
 		}
@@ -58,7 +61,7 @@ function validateUnitRange(range: UnitRange<any>) {
 		units.add(unit);
 		prev = unit;
 		unit = unit.next;
-	} while (unit !== range.prev);
+	} while (prev !== range.prev);
 }
 
 export class UnitTypeError extends TypeError {
@@ -80,4 +83,10 @@ export function validateUnit(unit: Unit<any>) {
 	if (!("value" in unit)) {
 		throw new UnitTypeError(unit, "unit.value must be defined.");
 	}
+}
+
+export function toArray<T>(source: PatchObservableLike<T>) {
+	const values: T[] = [];
+
+	return values;
 }

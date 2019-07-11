@@ -2,7 +2,6 @@ import { Observable, Observer } from "./observable";
 import { Patch, PatchObservable, PatchObserver, Unit, UnitRange } from "./patch-observable";
 
 const RANGE = Symbol("range");
-const RANGE_PATCH = Symbol("range-patch");
 const PROJECTION = Symbol("mapping");
 const ENTRY_OBSERVERS = Symbol("entry-observers");
 
@@ -18,13 +17,12 @@ export class ObservableSet<T> extends PatchObservable<T> implements Set<T> {
 	}
 
 	private readonly [RANGE]: UnitRange<T> = { next: null, prev: null };
-	private readonly [RANGE_PATCH]: Patch<T> = { prev: null, next: null, stale: null, fresh: this[RANGE] };
 	private readonly [PROJECTION] = new Map<T, Unit<T>>();
 	private readonly [ENTRY_OBSERVERS] = new Map<T, Set<Observer<boolean>>>();
 
 	protected onSubscribe(observer: Partial<PatchObserver<T>>) {
 		if (observer.patch) {
-			observer.patch(this[RANGE_PATCH]);
+			observer.patch({ prev: null, next: null, stale: null, fresh: this[RANGE].next ? this[RANGE] : null });
 		}
 	}
 
@@ -85,7 +83,12 @@ export class ObservableSet<T> extends PatchObservable<T> implements Set<T> {
 		if (!projection.has(value)) {
 			const prev = range.prev;
 			const unit: Unit<T> = { prev, next: null, value };
-			prev.next = unit;
+			range.prev = unit;
+			if (prev) {
+				prev.next = unit;
+			} else {
+				range.next = unit;
+			}
 			projection.set(value, unit);
 			const observers = this[ENTRY_OBSERVERS].get(value);
 			if (observers) {
@@ -104,6 +107,7 @@ export class ObservableSet<T> extends PatchObservable<T> implements Set<T> {
 			const { prev, next } = unit;
 			(prev || range).next = next;
 			(next || range).prev = prev;
+			projection.delete(value);
 			const observers = this[ENTRY_OBSERVERS].get(value);
 			if (observers) {
 				observers.forEach(o => o.resolve(false));
