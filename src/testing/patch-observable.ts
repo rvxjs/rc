@@ -43,7 +43,7 @@ export class RangeUnitTypeError extends TypeError {
 	}
 }
 
-function validateUnitRange(range: UnitRange<any>) {
+export function validateUnitRange(range: UnitRange<any>) {
 	const units = new Set<Unit<any>>();
 	let unit = range.next;
 	let prev: Unit<any> = null;
@@ -83,10 +83,4 @@ export function validateUnit(unit: Unit<any>) {
 	if (!("value" in unit)) {
 		throw new UnitTypeError(unit, "unit.value must be defined.");
 	}
-}
-
-export function toArray<T>(source: PatchObservableLike<T>) {
-	const values: T[] = [];
-
-	return values;
 }

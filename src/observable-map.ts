@@ -1,4 +1,4 @@
-import { Observer } from "./observable";
+import { Observer, Observable } from "./observable";
 import { Patch, PatchObservable, PatchObserver, Unit, UnitRange } from "./patch-observable";
 
 const RANGE = Symbol("range");
@@ -26,6 +26,28 @@ export class ObservableMap<K, V> extends PatchObservable<[K, V]> implements Map<
 		}
 	}
 
+	public entry(key: K) {
+		return new Observable<V>(observer => {
+			let observers = this[ENTRY_OBSERVERS].get(key);
+			if (observers) {
+				observers.add(observer);
+			} else {
+				this[ENTRY_OBSERVERS].set(key, observers = new Set([observer]));
+			}
+			return () => {
+				observers.delete(observer);
+				if (observers.size === 0) {
+					this[ENTRY_OBSERVERS].delete(key);
+				}
+			};
+		}, observer => {
+			if (observer.resolve) {
+				const unit = this[PROJECTION].get(key);
+				observer.resolve(unit ? unit.value[1] : undefined);
+			}
+		});
+	}
+
 	public clear() {
 		const range = this[RANGE];
 		if (range.next) {
@@ -33,29 +55,25 @@ export class ObservableMap<K, V> extends PatchObservable<[K, V]> implements Map<
 			const stale = { next: range.next, prev: range.prev };
 			range.next = null;
 			range.prev = null;
-
+			const notifyObservers: Set<Observer<V>>[] = [];
 			const deleteCount = projection.size;
-			projection.clear();
-
 			const entryObservers = this[ENTRY_OBSERVERS];
 			if (entryObservers.size > deleteCount) {
-				let unit = stale.next;
-				do {
-					const observers = entryObservers.get(unit.value[0]);
+				for (const key of projection.keys()) {
+					const observers = entryObservers.get(key);
 					if (observers) {
-						observers.forEach(o => o.resolve(unit.value[1]));
+						notifyObservers.push(observers);
 					}
-					unit = unit.next;
-				} while (unit !== stale.prev);
+				}
 			} else if (entryObservers.size > 0) {
 				for (const [key, observers] of entryObservers) {
-					const unit = projection.get(key);
-					if (unit) {
-						observers.forEach(o => o.resolve(unit.value[1]));
+					if (projection.has(key)) {
+						notifyObservers.push(observers);
 					}
 				}
 			}
-
+			projection.clear();
+			notifyObservers.forEach(n => n.forEach(o => o.resolve(undefined)));
 			this.notifyPatch({ prev: null, next: null, fresh: null, stale });
 		}
 	}

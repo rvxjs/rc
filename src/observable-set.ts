@@ -26,8 +26,8 @@ export class ObservableSet<T> extends PatchObservable<T> implements Set<T> {
 		}
 	}
 
-	public entry(value: T): Observable<boolean> {
-		return new Observable(observer => {
+	public entry(value: T) {
+		return new Observable<boolean>(observer => {
 			let observers = this[ENTRY_OBSERVERS].get(value);
 			if (observers) {
 				observers.add(observer);
@@ -54,25 +54,25 @@ export class ObservableSet<T> extends PatchObservable<T> implements Set<T> {
 			const stale = { next: range.next, prev: range.prev };
 			range.next = null;
 			range.prev = null;
+			const notifyObservers: Set<Observer<boolean>>[] = [];
 			const deleteCount = projection.size;
-			projection.clear();
 			const entryObservers = this[ENTRY_OBSERVERS];
 			if (entryObservers.size > deleteCount) {
-				let unit = stale.next;
-				do {
-					const observers = entryObservers.get(unit.value);
+				for (const value of projection.keys()) {
+					const observers = entryObservers.get(value);
 					if (observers) {
-						observers.forEach(o => o.resolve(false));
+						notifyObservers.push(observers);
 					}
-					unit = unit.next;
-				} while (unit !== stale.prev);
+				}
 			} else if (entryObservers.size > 0) {
 				for (const [value, observers] of entryObservers) {
 					if (projection.has(value)) {
-						observers.forEach(o => o.resolve(false));
+						notifyObservers.push(observers);
 					}
 				}
 			}
+			projection.clear();
+			notifyObservers.forEach(n => n.forEach(o => o.resolve(false)));
 			this.notifyPatch({ prev: null, next: null, fresh: null, stale });
 		}
 	}
