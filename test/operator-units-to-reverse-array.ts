@@ -2,7 +2,8 @@ import test from "ava";
 import { PatchObservable, Unit, unitsToReverseArray } from "../src";
 
 test("patch processing", t => {
-	const arrays = unitsToReverseArray(new PatchObservable<number>(observer => {
+	const events = [];
+	new PatchObservable<number>(observer => {
 		const a: Unit<number> = { prev: null, next: null, value: 7 };
 		observer.patch({ prev: null, next: null, stale: null, fresh: { next: a, prev: a } });
 
@@ -20,9 +21,7 @@ test("patch processing", t => {
 		observer.patch({ prev: null, next: null, stale: { next: a, prev: c }, fresh: null });
 
 		observer.patch({ prev: null, next: null, stale: null, fresh: null });
-	}));
-	const events = [];
-	arrays.subscribe(event => events.push(event));
+	}).pipe(unitsToReverseArray).subscribe(event => events.push(event));
 	t.deepEqual(events, [
 		[7],
 		[7, 11],

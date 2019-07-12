@@ -1,9 +1,9 @@
 import test from "ava";
-import { PatchObservable, Unit, unitsToArray } from "../src";
+import { mapUnits, PatchObservable, Unit, unitsToArray } from "../src";
 
 test("patch processing", t => {
 	const events = [];
-	new PatchObservable<number>(observer => {
+	const x = new PatchObservable<number>(observer => {
 		const a: Unit<number> = { prev: null, next: null, value: 7 };
 		observer.patch({ prev: null, next: null, stale: null, fresh: { next: a, prev: a } });
 
@@ -21,13 +21,22 @@ test("patch processing", t => {
 		observer.patch({ prev: null, next: null, stale: { next: c, prev: a }, fresh: null });
 
 		observer.patch({ prev: null, next: null, stale: null, fresh: null });
-	}).pipe(unitsToArray).subscribe(event => events.push(event));
+
+		const d: Unit<number> = { prev: null, next: null, value: 1 };
+		const e: Unit<number> = { prev: d, next: null, value: 3 };
+		d.next = e;
+		const f: Unit<number> = { prev: e, next: null, value: 5 };
+		e.next = f;
+		observer.patch({ prev: null, next: null, stale: null, fresh: { next: d, prev: f } });
+
+	}).pipe(mapUnits, (value: number) => value * 2).pipe(unitsToArray).subscribe(event => events.push(event));
 	t.deepEqual(events, [
-		[7],
-		[7, 11],
-		[7],
-		[13, 7],
+		[14],
+		[14, 22],
+		[14],
+		[26, 14],
 		[],
-		[]
+		[],
+		[2, 6, 10]
 	]);
 });

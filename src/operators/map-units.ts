@@ -1,7 +1,7 @@
 import { Patch, PatchObservable, PatchObservableLike, Unit, UnitRange } from "../patch-observable";
 
 /** Map each unit value from a sequence. */
-export function mapUnits<T, U>(source: PatchObservableLike<T>, map: (value: T) => U): PatchObservableLike<U> {
+export function mapUnits<T, U>(source: PatchObservableLike<T>, map: (value: T) => U): PatchObservable<U> {
 	let resolved = false;
 	const range: UnitRange<U> = { next: null, prev: null };
 	const rangePatch: Patch<U> = { prev: null, next: null, stale: null, fresh: range };
@@ -20,11 +20,12 @@ export function mapUnits<T, U>(source: PatchObservableLike<T>, map: (value: T) =
 						next: projection.get(staleSource.next),
 						prev: projection.get(staleSource.prev)
 					};
-					let current = staleSource.next;
-					do {
-						projection.delete(current);
-						current = current.next;
-					} while (current !== staleSource.prev);
+					for (let current = staleSource.next;; current = current.next) {
+						projection.delete(staleSource.next);
+						if (current === staleSource.prev) {
+							break;
+						}
+					}
 				}
 
 				let fresh: UnitRange<U>;
@@ -36,7 +37,8 @@ export function mapUnits<T, U>(source: PatchObservableLike<T>, map: (value: T) =
 						fresh = { next: unit, prev: unit };
 						projection.set(freshSource.next, unit);
 					} else {
-						let last: Unit<U> = { prev: prev, next: null, value: map(freshSource.next.value) };
+						const first: Unit<U> = { prev: prev, next: null, value: map(freshSource.next.value) };
+						let last: Unit<U> = first;
 						(prev || range).next = last;
 						projection.set(freshSource.next, last);
 						for (let current = freshSource.next.next; current !== freshSource.prev; current = current.next) {
@@ -46,9 +48,14 @@ export function mapUnits<T, U>(source: PatchObservableLike<T>, map: (value: T) =
 							projection.set(current, unit);
 						}
 						const unit: Unit<U> = { prev: last, next: null, value: map(freshSource.prev.value) };
+						last.next = unit;
 						(next || range).prev = unit;
+						fresh = { next: first, prev: unit };
 						projection.set(freshSource.prev, unit);
 					}
+				} else {
+					(prev || range).next = next;
+					(next || range).prev = prev;
 				}
 
 				observer.patch({ prev, next, fresh, stale });
