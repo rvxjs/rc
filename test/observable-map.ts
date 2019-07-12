@@ -5,7 +5,7 @@ import { validatePatch } from "../src/testing/patch-observable";
 test("patch consistency", t => {
 	// 16: Number of modifications made to the map below.
 	// 2: Number of assertions per modification.
-	// 2: Number of raw assertions.
+	// 4: Number of raw assertions.
 	t.plan((16 * 2) + 4);
 	const map = new ObservableMap<string, number>();
 
