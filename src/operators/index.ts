@@ -1,4 +1,5 @@
 export * from "./filter";
+export * from "./join";
 export * from "./map-units";
 export * from "./map";
 export * from "./units-to-array";
