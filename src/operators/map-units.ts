@@ -63,7 +63,7 @@ export function mapUnits<T, U>(source: PatchObservableLike<T>, map: (value: T) =
 			reject: error => observer.reject(error)
 		});
 	}, observer => {
-		if (resolved) {
+		if (resolved && observer.patch) {
 			observer.patch(rangePatch);
 		}
 	});
