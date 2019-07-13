@@ -1,5 +1,5 @@
 import test from "ava";
-import { PatchObservable, Unit, unitsToArray } from "../src";
+import { PatchObservable, Unit, unitsToArray } from "../../src";
 
 test("patch processing", t => {
 	const events = [];

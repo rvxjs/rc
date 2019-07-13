@@ -1,5 +1,5 @@
 import test from "ava";
-import { map, Observable } from "../src";
+import { map, Observable } from "../../src";
 
 test("resolve", t => {
 	const events = [];

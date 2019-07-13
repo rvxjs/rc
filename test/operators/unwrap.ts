@@ -1,5 +1,5 @@
 import test from "ava";
-import { Observable, Observer, unwrap } from "../src";
+import { Observable, Observer, unwrap } from "../../src";
 
 test("resolve", t => {
 	const source = new Observable<Observable<string>>(observer => {

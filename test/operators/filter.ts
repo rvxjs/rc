@@ -1,5 +1,5 @@
 import test from "ava";
-import { filter, Observable } from "../src";
+import { filter, Observable } from "../../src";
 
 test("resolve", t => {
 	const events = [];

@@ -1,5 +1,5 @@
 import test from "ava";
-import { join, Observable, Observer } from "../src";
+import { join, Observable, Observer } from "../../src";
 
 test("join", t => {
 	let a: Observer<string>;

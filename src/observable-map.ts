@@ -1,5 +1,5 @@
-import { Observer, Observable } from "./observable";
-import { Patch, PatchObservable, PatchObserver, Unit, UnitRange } from "./patch-observable";
+import { Observable, Observer } from "./observable";
+import { PatchObservable, PatchObserver, Unit, UnitRange } from "./patch-observable";
 
 const RANGE = Symbol("range");
 const PROJECTION = Symbol("mapping");
