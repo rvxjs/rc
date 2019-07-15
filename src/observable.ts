@@ -87,4 +87,10 @@ export class Observable<T> implements ObservableLike<T> {
 	public pipe<U, A extends any[]>(operator: ObservableOperator<T, U, A>, ...args: A) {
 		return operator(this, ...args);
 	}
+
+	/** Implement an observer api that inherits from */
+	public static implementObserver<T>(target: { prototype: Observable<T> & Observer<T> }) {
+		target.prototype.resolve = target.prototype.notifyResolve;
+		target.prototype.reject = target.prototype.notifyReject;
+	}
 }
