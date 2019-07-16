@@ -1,5 +1,5 @@
 import test from "ava";
-import { Observable, dispose } from "../src";
+import { dispose, Observable } from "../src";
 
 test("observer", t => {
 	new Observable(observer => {
