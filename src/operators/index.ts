@@ -1,3 +1,4 @@
+export * from "./filter-units";
 export * from "./filter";
 export * from "./join";
 export * from "./map-units";
