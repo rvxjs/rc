@@ -7,6 +7,9 @@ export function mapUnits<T, U>(source: PatchObservableLike<T>, map: (value: T) =
 	const rangePatch: Patch<U> = { prev: null, next: null, stale: null, fresh: range };
 	const projection = new Map<Unit<T>, Unit<U>>();
 	return new PatchObservable<U>(observer => {
+		resolved = false;
+		range.next = null;
+		range.prev = null;
 		return source.patches({
 			patch: patch => {
 				resolved = true;
@@ -58,7 +61,9 @@ export function mapUnits<T, U>(source: PatchObservableLike<T>, map: (value: T) =
 					(next || range).prev = prev;
 				}
 
-				observer.patch({ prev, next, fresh, stale });
+				if (fresh || stale) {
+					observer.patch({ prev, next, fresh, stale });
+				}
 			},
 			reject: error => observer.reject(error)
 		});

@@ -7,6 +7,9 @@ export function filterUnits<T>(source: PatchObservableLike<T>, predicate: (value
 	const range: UnitRange<T> = { next: null, prev: null };
 	const rangePatch: Patch<T> = { prev: null, next: null, stale: null, fresh: range };
 	return new PatchObservable<T>(observer => {
+		resolved = false;
+		range.next = null;
+		range.prev = null;
 		return mapUnits<T, Unit<T>>(source, value => {
 			return predicate(value) ? { prev: null, next: null, value } : null;
 		}).patches({
@@ -61,7 +64,9 @@ export function filterUnits<T>(source: PatchObservableLike<T>, predicate: (value
 					(next || range).prev = prev;
 				}
 
-				observer.patch({ prev, next, fresh, stale });
+				if (fresh || stale) {
+					observer.patch({ prev, next, fresh, stale });
+				}
 			},
 			reject(error) {
 				observer.reject(error);
