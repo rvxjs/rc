@@ -1,4 +1,4 @@
-import { dispose, DisposeLogic } from "./disposable";
+import { dispose, DisposeLogic, Disposable } from "./disposable";
 
 /** Represents a linear sequence of units that changes over time. */
 export interface PatchObservableLike<T> {
@@ -155,5 +155,62 @@ export class PatchObservable<T> implements PatchObservableLike<T> {
 	/** Apply an operator to this observable and get the result. */
 	public pipe<U, A extends any[]>(operator: PatchObservableOperator<T, U, A>, ...args: A) {
 		return operator(this, ...args);
+	}
+
+	/** Get an array that represents the closest state of this patch observable. */
+	public toArray() {
+		return new Promise<T[]>((resolve, reject) => {
+			const subscription = new Disposable();
+			subscription.add(this.patches({
+				patch(patch) {
+					if (!subscription.disposed) {
+						subscription.dispose();
+						if (patch.fresh) {
+							const values = [];
+							for (let unit = patch.fresh.next; unit; unit = unit.next) {
+								values.push(unit.value);
+							}
+							resolve(values);
+						} else {
+							resolve([]);
+						}
+					}
+				},
+				reject(error) {
+					subscription.dispose();
+					reject(error);
+				}
+			}));
+		});
+	}
+
+	/** Create an empty patch observable that never changes. */
+	public static empty() {
+		const patch: Patch<any> = { prev: null, next: null, stale: null, fresh: null };
+		return new PatchObservable<any>(null, observer => {
+			observer.patch(patch);
+		});
+	}
+
+	/** Create a patch observable that never changes. */
+	public static fixed<T>(values: Iterable<T>) {
+		const range: UnitRange<T> = { next: null, prev: null };
+		let prev: Unit<T> = null;
+		for (const value of values) {
+			const unit: Unit<T> = { prev, next: null, value };
+			(prev || range).next = unit;
+			prev = unit;
+		}
+		range.prev = prev;
+		if (prev) {
+			const patch: Patch<T> = { prev: null, next: null, stale: null, fresh: range };
+			return new PatchObservable<T>(null, observer => {
+				if (observer.patch) {
+					observer.patch(patch);
+				}
+			});
+		} else {
+			return PatchObservable.empty();
+		}
 	}
 }
