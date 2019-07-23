@@ -1,5 +1,5 @@
 import test from "ava";
-import { dispose, Observable } from "../src";
+import { dispose, Observable, toPromise } from "../src";
 
 test("observer", t => {
 	new Observable(observer => {
@@ -93,4 +93,12 @@ test("observable lifecycle", t => {
 	events.length = 0;
 	dispose(source.subscribe());
 	t.deepEqual(events, [ ["start", 1], ["stop", 1] ]);
+});
+
+test("from (resolved promise)", async t => {
+	t.is(await Observable.from(new Promise(resolve => resolve("foo"))).pipe(toPromise), "foo");
+});
+
+test("from (rejected promise)", async t => {
+	t.is(await Observable.from(new Promise(resolve => resolve("foo"))).pipe(toPromise), "foo");
 });

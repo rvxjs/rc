@@ -88,9 +88,29 @@ export class Observable<T> implements ObservableLike<T> {
 		return operator(this, ...args);
 	}
 
+	/** Create an observable from the specified source. */
+	public static from<T>(source: ObservableLike<T> | Promise<T> | void) {
+		if (isObservable(source)) {
+			return new Observable(observer => source.subscribe(observer));
+		} else if (source && typeof source.then === "function") {
+			return new Observable<T>(observer => {
+				source.then(value => observer.resolve(value), error => observer.reject(error));
+			});
+		} else {
+			return new Observable(observer => {
+				observer.resolve(source);
+			});
+		}
+	}
+
 	/** Implement an observer api that inherits from */
 	public static implementObserver<T>(target: { prototype: Observable<T> & Observer<T> }) {
 		target.prototype.resolve = target.prototype.notifyResolve;
 		target.prototype.reject = target.prototype.notifyReject;
 	}
+}
+
+/** Check if a value is an observable. */
+export function isObservable(value: any): value is ObservableLike<any> {
+	return value && typeof value.subscribe === "function";
 }

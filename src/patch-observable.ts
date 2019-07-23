@@ -1,4 +1,4 @@
-import { dispose, DisposeLogic, Disposable } from "./disposable";
+import { Disposable, dispose, DisposeLogic } from "./disposable";
 
 /** Represents a linear sequence of units that changes over time. */
 export interface PatchObservableLike<T> {
@@ -81,7 +81,11 @@ const OBSERVERS = Symbol("observers");
 const STARTED = Symbol("started");
 const DISPOSAL = Symbol("disposal");
 
-/** Represents a linear sequence of units that changes over time. */
+/**
+ * Represents a linear sequence of units that changes over time.
+ *
+ * When a new observer subscribes, the patch observable must emit an individual patch representing the latest state if available.
+ */
 export class PatchObservable<T> implements PatchObservableLike<T> {
 	public constructor(
 		awake?: (observer: PatchObserver<T>) => DisposeLogic,
@@ -157,33 +161,6 @@ export class PatchObservable<T> implements PatchObservableLike<T> {
 		return operator(this, ...args);
 	}
 
-	/** Get an array that represents the closest state of this patch observable. */
-	public toArray() {
-		return new Promise<T[]>((resolve, reject) => {
-			const subscription = new Disposable();
-			subscription.add(this.patches({
-				patch(patch) {
-					if (!subscription.disposed) {
-						subscription.dispose();
-						if (patch.fresh) {
-							const values = [];
-							for (let unit = patch.fresh.next; unit; unit = unit.next) {
-								values.push(unit.value);
-							}
-							resolve(values);
-						} else {
-							resolve([]);
-						}
-					}
-				},
-				reject(error) {
-					subscription.dispose();
-					reject(error);
-				}
-			}));
-		});
-	}
-
 	/** Create an empty patch observable that never changes. */
 	public static empty() {
 		const patch: Patch<any> = { prev: null, next: null, stale: null, fresh: null };
@@ -213,4 +190,9 @@ export class PatchObservable<T> implements PatchObservableLike<T> {
 			return PatchObservable.empty();
 		}
 	}
+}
+
+/** Check if a value is an observable. */
+export function isPatchObservable(value: any): value is PatchObservableLike<any> {
+	return value && typeof value.patches === "function";
 }
