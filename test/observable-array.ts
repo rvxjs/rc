@@ -112,6 +112,30 @@ test("push", t => {
 	t.deepEqual(events, [ [], ["foo"], ["foo", "bar", "baz"] ]);
 });
 
+test("reverse", t => {
+	const events: any[][] = [];
+	const arr = createArray(t, events);
+	arr[0] = "foo";
+	arr[1] = "bar";
+	arr.reverse();
+	t.deepEqual(Array.from(arr), ["bar", "foo"]);
+	t.deepEqual(events, [ [], ["foo"], ["foo", "bar"], ["bar", "foo"] ]);
+});
+
+test("shift", t => {
+	const events: any[][] = [];
+	const arr = createArray(t, events);
+	arr[0] = "foo";
+	arr[1] = "bar";
+	t.deepEqual(Array.from(arr), ["foo", "bar"]);
+	t.is(arr.shift(), "foo");
+	t.deepEqual(Array.from(arr), ["bar"]);
+	t.is(arr.shift(), "bar");
+	t.deepEqual(Array.from(arr), []);
+	t.is(arr.shift(), undefined);
+	t.deepEqual(events, [ [], ["foo"], ["foo", "bar"], ["bar"], [] ]);
+});
+
 function createArray<T>(t: ExecutionContext, events?: T[][]) {
 	const arr = new ObservableArray<T>();
 	arr.patches(validatePatch);

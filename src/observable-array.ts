@@ -191,14 +191,37 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 	}
 
 	public reverse() {
-		// TODO: Patch.
-		this[TARGET].reverse();
+		const range = this[RANGE];
+		const projection = this[PROJECTION];
+		const target = this[TARGET];
+		if (target.length) {
+			target.reverse();
+			const stale: UnitRange<T> = { next: projection[0], prev: projection[target.length - 1] };
+			let prev: Unit<T>;
+			for (const value of target) {
+				const unit: Unit<T> = { prev, next: null, value };
+				(prev || range).next = unit;
+				prev = unit;
+			}
+			range.prev = prev;
+			this.notifyPatch({ prev: null, next: null, stale, fresh: range });
+		}
 		return this;
 	}
 
 	public shift(): T {
-		// TODO: Patch.
-		return this[TARGET].shift();
+		const range = this[RANGE];
+		const projection = this[PROJECTION];
+		const target = this[TARGET];
+		const unit = projection.shift();
+		if (unit) {
+			const next = unit.next;
+			range.next = next;
+			(next || range).prev = null;
+			const value = target.shift();
+			this.notifyPatch({ prev: null, next, stale: { next: unit, prev: unit }, fresh: null });
+			return value;
+		}
 	}
 
 	public slice(start?: number, end?: number): T[] {
