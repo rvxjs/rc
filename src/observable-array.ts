@@ -163,10 +163,10 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 	}
 
 	public push(...items: T[]) {
+		const target = this[TARGET];
 		if (items.length > 0) {
 			const range = this[RANGE];
 			const projection = this[PROJECTION];
-			const target = this[TARGET];
 			const oldLength = target.length;
 			let prev = projection[oldLength - 1];
 			for (const value of items) {
@@ -175,10 +175,10 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 				prev = unit;
 			}
 			range.prev = prev;
-			const result = this[TARGET].push(...items);
+			this[TARGET].push(...items);
 			this.notifyPatch({ prev: projection[oldLength - 1], next: null, stale: null, fresh: { next: projection[oldLength], prev } });
-			return result;
 		}
+		return target.length;
 	}
 
 	public concat(...items: (T | ConcatArray<T>)[]): T[];
@@ -228,20 +228,94 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 		return this[TARGET].slice(start, end);
 	}
 
+	/**
+	 * Sort the array.
+	 *
+	 * **WARNING**: Currently, sorting an observable array will emit a patch that replaces the complete old array with the sorted array, even if nothing changes. Consider using a sort operator instead.
+	 */
 	public sort(compareFn?: (a: T, b: T) => number) {
-		// TODO: Patch.
-		this[TARGET].sort(compareFn);
+		const range = this[RANGE];
+		const projection = this[PROJECTION];
+		const target = this[TARGET];
+		if (target.length) {
+			target.sort(compareFn);
+			const stale: UnitRange<T> = { next: projection[0], prev: projection[target.length - 1] };
+			let prev: Unit<T>;
+			for (const value of target) {
+				const unit: Unit<T> = { prev, next: null, value };
+				(prev || range).next = unit;
+				prev = unit;
+			}
+			range.prev = prev;
+			this.notifyPatch({ prev: null, next: null, stale, fresh: range });
+		}
 		return this;
 	}
 
 	public splice(start: number, deleteCount?: number, ...items: T[]): T[] {
-		// TODO: Patch.
-		return this[TARGET].splice(start, deleteCount, ...items);
+		const range = this[RANGE];
+		const projection = this[PROJECTION];
+		const target = this[TARGET];
+		const oldLength = target.length;
+		start >>= 0;
+		if (start > oldLength) {
+			start = oldLength;
+		} else if (start < -oldLength) {
+			start = 0;
+		} else if (start < 0) {
+			start = oldLength + start;
+		}
+		if (deleteCount === undefined || deleteCount > oldLength - start) {
+			deleteCount = oldLength - start;
+		} else if (deleteCount < 0) {
+			deleteCount = 0;
+		} else {
+			deleteCount >>= 0;
+		}
+		let prev = projection[start - 1];
+		const fresh: Unit<T>[] = [];
+		for (const value of items) {
+			const unit: Unit<T> = { prev, next: null, value };
+			(prev || range).next = unit;
+			prev = unit;
+			fresh.push(unit);
+		}
+		const next = projection[start + deleteCount];
+		(prev || range).next = next;
+		(next || range).prev = prev;
+		const stale = projection.splice(start, deleteCount, ...fresh);
+		const result = target.splice(start, deleteCount, ...items);
+		this.notifyPatch({
+			prev: projection[start - 1],
+			next,
+			stale: deleteCount > 0 ? { next: stale[0], prev: stale[deleteCount - 1] } : null,
+			fresh: items.length > 0 ? { next: fresh[0], prev: fresh[items.length - 1] } : null
+		});
+		return result;
 	}
 
 	public unshift(...items: T[]): number {
-		// TODO: Patch.
-		return this[TARGET].unshift(...items);
+		const target = this[TARGET];
+		if (items.length > 0) {
+			const range = this[RANGE];
+			const projection = this[PROJECTION];
+			let prev: Unit<T> = null;
+			const fresh: Unit<T>[] = [];
+			for (const value of items) {
+				const unit: Unit<T> = { prev, next: null, value };
+				(prev || range).next = unit;
+				prev = unit;
+				fresh.push(unit);
+			}
+			const next = projection[0];
+			prev.next = next;
+			(next || range).prev = prev;
+			projection.unshift(...fresh);
+			target.unshift(...items);
+			this.notifyPatch({ prev: null, next, stale: null, fresh: { next: fresh[0], prev: fresh[items.length - 1] }
+			});
+		}
+		return target.length;
 	}
 
 	public indexOf(item: T, fromIndex?: number): number {
@@ -297,14 +371,97 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 	}
 
 	public fill(value: T, start?: number, end?: number) {
-		// TODO: Patch.
-		this[TARGET].fill(value, start, end);
+		const range = this[RANGE];
+		const projection = this[PROJECTION];
+		const target = this[TARGET];
+		const length = target.length;
+		if (start === undefined || start < -length) {
+			start = 0;
+		} else if (start > length) {
+			return this;
+		} else if (start < 0) {
+			start = length + start;
+		} else {
+			start >>= 0;
+		}
+		if (end === undefined || end > length) {
+			end = length;
+		} else if (end < 0) {
+			end = length + end;
+		} else {
+			end >>= 0;
+		}
+		if (end <= start) {
+			return this;
+		}
+		end = Math.min(end);
+
+		let prev = projection[start - 1];
+		const fresh: Unit<T>[] = [];
+		for (let i = start; i < end; i++) {
+			const unit: Unit<T> = { prev, next: null, value };
+			(prev || range).next = unit;
+			prev = unit;
+			fresh.push(unit);
+		}
+		const next = projection[end];
+		(prev || range).next = next;
+		(next || range).prev = prev;
+		const stale = projection.splice(start, end - start, ...fresh);
+		target.fill(value, start, end);
+		this.notifyPatch({
+			prev: projection[start - 1],
+			next,
+			stale: { next: stale[0], prev: stale[stale.length - 1] },
+			fresh: { next: fresh[0], prev: fresh[fresh.length - 1] }
+		});
 		return this;
 	}
 
-	public copyWithin(target: number, start: number, end?: number): this {
-		// TODO: Patch.
-		this[TARGET].copyWithin(target, start, end);
+	public copyWithin(targetStart: number, start?: number, end?: number): this {
+		const range = this[RANGE];
+		const projection = this[PROJECTION];
+		const target = this[TARGET];
+		const length = target.length;
+
+		if (targetStart < -length) {
+			targetStart = 0;
+		} else if (targetStart < 0) {
+			targetStart = length + targetStart;
+		} else {
+			targetStart >>= 0;
+		}
+		if (start < -length) {
+			start = 0;
+		} else if (start < 0) {
+			start = length + start;
+		} else {
+			start >>= 0;
+		}
+		if (end === undefined) {
+			end = length;
+		} else if (end < 0) {
+			end = length + end;
+		} else {
+			end >>= 0;
+		}
+		if (targetStart >= length || end <= start) {
+			return this;
+		}
+		const targetEnd = Math.min(targetStart + (end - start), length);
+		const offset = start - targetStart;
+		const stale: UnitRange<T> = { next: projection[targetStart], prev: projection[targetEnd - 1] };
+		let prev = projection[targetStart - 1];
+		for (let i = targetStart; i < targetEnd; i++) {
+			const unit: Unit<T> = { prev, next: null, value: target[i + offset] };
+			(prev || range).next = unit;
+			prev = unit;
+			projection[i] = unit;
+		}
+		prev.next = projection[targetEnd];
+		(projection[targetEnd] || range).prev = prev;
+		target.copyWithin(targetStart, start, end);
+		this.notifyPatch({ prev: projection[targetStart - 1], next: projection[targetEnd], stale, fresh: { next: projection[targetStart], prev: projection[targetEnd - 1] } });
 		return this;
 	}
 
