@@ -1,23 +1,23 @@
-import { Patch, PatchObservable, PatchObservableLike, Unit, UnitRange } from "../patch-observable";
+import { Sequence, SequenceLike, SequencePatch, SequenceRange, Unit } from "../sequence";
 
 /** Map each unit value from a sequence. */
-export function mapUnits<T, U>(source: PatchObservableLike<T>, map: (value: T) => U) {
+export function mapSequence<T, U>(source: SequenceLike<T>, map: (value: T) => U) {
 	let resolved = false;
-	const range: UnitRange<U> = { next: null, prev: null };
-	const rangePatch: Patch<U> = { prev: null, next: null, stale: null, fresh: range };
+	const range: SequenceRange<U> = { next: null, prev: null };
+	const rangePatch: SequencePatch<U> = { prev: null, next: null, stale: null, fresh: range };
 	const projection = new Map<Unit<T>, Unit<U>>();
-	return new PatchObservable<U>(observer => {
+	return new Sequence<U>(observer => {
 		resolved = false;
 		range.next = null;
 		range.prev = null;
-		return source.patches({
-			patch: patch => {
+		return source.subscribeToSequence({
+			updateSequence: patch => {
 				resolved = true;
 				const { fresh: freshSource, stale: staleSource } = patch;
 				const prev = patch.prev ? projection.get(patch.prev) : null;
 				const next = patch.next ? projection.get(patch.next) : null;
 
-				let stale: UnitRange<U>;
+				let stale: SequenceRange<U>;
 				if (staleSource) {
 					stale = {
 						next: projection.get(staleSource.next),
@@ -31,7 +31,7 @@ export function mapUnits<T, U>(source: PatchObservableLike<T>, map: (value: T) =
 					}
 				}
 
-				let fresh: UnitRange<U>;
+				let fresh: SequenceRange<U>;
 				if (freshSource) {
 					if (freshSource.next === freshSource.prev) {
 						const unit: Unit<U> = { prev: prev, next: next, value: map(freshSource.next.value) };
@@ -62,14 +62,14 @@ export function mapUnits<T, U>(source: PatchObservableLike<T>, map: (value: T) =
 				}
 
 				if (fresh || stale) {
-					observer.patch({ prev, next, fresh, stale });
+					observer.updateSequence({ prev, next, fresh, stale });
 				}
 			},
 			reject: error => observer.reject(error)
 		});
 	}, observer => {
-		if (resolved && observer.patch) {
-			observer.patch(rangePatch);
+		if (resolved && observer.updateSequence) {
+			observer.updateSequence(rangePatch);
 		}
 	});
 }

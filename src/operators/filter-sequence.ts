@@ -1,25 +1,25 @@
-import { Patch, PatchObservable, PatchObservableLike, Unit, UnitRange } from "../patch-observable";
-import { mapUnits } from "./map-units";
+import { Sequence, SequenceLike, SequencePatch, SequenceRange, Unit } from "../sequence";
+import { mapSequence } from "./map-sequence";
 
 /** Filter a sequence of units. */
-export function filterUnits<T>(source: PatchObservableLike<T>, predicate: (value: T) => boolean) {
+export function filterSequence<T>(source: SequenceLike<T>, predicate: (value: T) => boolean) {
 	let resolved = false;
-	const range: UnitRange<T> = { next: null, prev: null };
-	const rangePatch: Patch<T> = { prev: null, next: null, stale: null, fresh: range };
-	return new PatchObservable<T>(observer => {
+	const range: SequenceRange<T> = { next: null, prev: null };
+	const rangePatch: SequencePatch<T> = { prev: null, next: null, stale: null, fresh: range };
+	return new Sequence<T>(observer => {
 		resolved = false;
 		range.next = null;
 		range.prev = null;
-		return mapUnits<T, Unit<T>>(source, value => {
+		return mapSequence<T, Unit<T>>(source, value => {
 			return predicate(value) ? { prev: null, next: null, value } : null;
-		}).patches({
-			patch(patch) {
+		}).subscribeToSequence({
+			updateSequence(patch) {
 				resolved = true;
 				const { fresh: freshSource, stale: staleSource } = patch;
 				const prev = closestPrev(patch.prev);
 				const next = closestNext(patch.next);
 
-				let stale: UnitRange<T>;
+				let stale: SequenceRange<T>;
 				if (staleSource) {
 					let first: Unit<T> = null;
 					let last: Unit<T> = null;
@@ -36,7 +36,7 @@ export function filterUnits<T>(source: PatchObservableLike<T>, predicate: (value
 					}
 				}
 
-				let fresh: UnitRange<T>;
+				let fresh: SequenceRange<T>;
 				if (freshSource) {
 					let first: Unit<T> = null;
 					let last: Unit<T> = null;
@@ -65,7 +65,7 @@ export function filterUnits<T>(source: PatchObservableLike<T>, predicate: (value
 				}
 
 				if (fresh || stale) {
-					observer.patch({ prev, next, fresh, stale });
+					observer.updateSequence({ prev, next, fresh, stale });
 				}
 			},
 			reject(error) {
@@ -73,8 +73,8 @@ export function filterUnits<T>(source: PatchObservableLike<T>, predicate: (value
 			}
 		});
 	}, observer => {
-		if (resolved && observer.patch) {
-			observer.patch(rangePatch);
+		if (resolved && observer.updateSequence) {
+			observer.updateSequence(rangePatch);
 		}
 	});
 }

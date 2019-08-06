@@ -1,14 +1,14 @@
-import { Patch, PatchObservableLike, Unit, UnitRange } from "../patch-observable";
+import { SequencePatch, SequenceRange, Unit } from "../sequence";
 
 export class PatchTypeError extends TypeError {
-	public constructor(public readonly patch: Patch<any>, message?: string) {
+	public constructor(public readonly patch: SequencePatch<any>, message?: string) {
 		super(message);
 	}
 }
 
-export function validatePatch(patch: Patch<any>) {
+export function validatePatch(patch: SequencePatch<any>) {
 	if (patch.fresh) {
-		validateUnitRange(patch.fresh);
+		validateSequenceRange(patch.fresh);
 		if (patch.prev) {
 			if (patch.prev !== patch.fresh.next.prev) {
 				throw new PatchTypeError(patch, "new range start must link to the previous unit");
@@ -27,7 +27,7 @@ export function validatePatch(patch: Patch<any>) {
 		}
 	}
 	if (patch.stale) {
-		validateUnitRange(patch.stale);
+		validateSequenceRange(patch.stale);
 		if (patch.prev && patch.prev !== patch.stale.next.prev) {
 			throw new PatchTypeError(patch, "stale range start must still link to the previous unit");
 		}
@@ -37,25 +37,25 @@ export function validatePatch(patch: Patch<any>) {
 	}
 }
 
-export class RangeUnitTypeError extends TypeError {
-	public constructor(public readonly range: UnitRange<any>, message?: string) {
+export class SequenceRangeTypeError extends TypeError {
+	public constructor(public readonly range: SequenceRange<any>, message?: string) {
 		super(message);
 	}
 }
 
-export function validateUnitRange(range: UnitRange<any>) {
+export function validateSequenceRange(range: SequenceRange<any>) {
 	const units = new Set<Unit<any>>();
 	let unit = range.next;
 	let prev: Unit<any> = null;
 	do {
 		if (!unit) {
-			throw new RangeUnitTypeError(range, "Unit chain ended before the range end.");
+			throw new SequenceRangeTypeError(range, "Unit chain ended before the range end.");
 		}
 		if (units.has(unit)) {
-			throw new RangeUnitTypeError(range, "Circular range");
+			throw new SequenceRangeTypeError(range, "Circular range");
 		}
 		if (prev && unit.prev !== prev) {
-			throw new RangeUnitTypeError(range, "Units within a range must be linked in both directions");
+			throw new SequenceRangeTypeError(range, "Units within a range must be linked in both directions");
 		}
 		validateUnit(unit);
 		units.add(unit);

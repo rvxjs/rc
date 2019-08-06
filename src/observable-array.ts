@@ -1,10 +1,10 @@
-import { PatchObservable, PatchObserver, Unit, UnitRange } from "./patch-observable";
+import { Sequence, SequenceObserver, SequenceRange, Unit } from "./sequence";
 
 const RANGE = Symbol("range");
 const PROJECTION = Symbol("projection");
 const TARGET = Symbol("target");
 
-export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
+export class ObservableArray<T> extends Sequence<T> implements Array<T> {
 	public constructor(proxy = true) {
 		super();
 		if (proxy) {
@@ -47,13 +47,13 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 		}
 	}
 
-	private readonly [RANGE]: UnitRange<T> = { next: null, prev: null };
+	private readonly [RANGE]: SequenceRange<T> = { next: null, prev: null };
 	private readonly [PROJECTION]: Unit<T>[] = [];
 	private readonly [TARGET]: T[] = [];
 
-	protected onSubscribe(observer: Partial<PatchObserver<T>>) {
-		if (observer.patch) {
-			observer.patch({ prev: null, next: null, stale: null, fresh: this[RANGE].next ? this[RANGE] : null });
+	protected onSubscribe(observer: Partial<SequenceObserver<T>>) {
+		if (observer.updateSequence) {
+			observer.updateSequence({ prev: null, next: null, stale: null, fresh: this[RANGE].next ? this[RANGE] : null });
 		}
 	}
 
@@ -76,9 +76,9 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 			}
 			range.prev = projection[value - 1];
 			target.length = value;
-			this.notifyPatch({ prev: projection[oldLength - 1], next: null, stale: null, fresh: { next: projection[oldLength], prev: projection[value - 1] } });
+			this.notifyUpdateSequence({ prev: projection[oldLength - 1], next: null, stale: null, fresh: { next: projection[oldLength], prev: projection[value - 1] } });
 		} else {
-			const stale: UnitRange<T> = { next: projection[value], prev: projection[oldLength - 1] };
+			const stale: SequenceRange<T> = { next: projection[value], prev: projection[oldLength - 1] };
 			const prev = projection[value - 1];
 			if (prev) {
 				prev.next = null;
@@ -86,7 +86,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 			}
 			projection.length = value;
 			target.length = value;
-			this.notifyPatch({ prev, next: null, stale, fresh: null });
+			this.notifyUpdateSequence({ prev, next: null, stale, fresh: null });
 		}
 	}
 
@@ -107,7 +107,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 			(oldUnit.next || range).prev = unit;
 			projection[index] = unit;
 			target[index] = value;
-			this.notifyPatch({ prev: oldUnit.prev, next: oldUnit.next, stale: { next: oldUnit, prev: oldUnit }, fresh: { next: unit, prev: unit } });
+			this.notifyUpdateSequence({ prev: oldUnit.prev, next: oldUnit.next, stale: { next: oldUnit, prev: oldUnit }, fresh: { next: unit, prev: unit } });
 		} else {
 			for (let i = oldLength; i < index; i++) {
 				const prev = projection[i - 1];
@@ -116,7 +116,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 			const prev = projection[index - 1];
 			range.prev = (prev || range).next = projection[index] = { prev, next: null, value };
 			target[index] = value;
-			this.notifyPatch({ prev: projection[oldLength - 1], next: null, stale: null, fresh: { next: projection[oldLength], prev: projection[index] } });
+			this.notifyUpdateSequence({ prev: projection[oldLength - 1], next: null, stale: null, fresh: { next: projection[oldLength], prev: projection[index] } });
 		}
 	}
 
@@ -131,7 +131,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 			(oldUnit.next || range).prev = unit;
 			projection[index] = unit;
 			delete this[TARGET][index];
-			this.notifyPatch({ prev: oldUnit.prev, next: oldUnit.next, stale: { next: oldUnit, prev: oldUnit }, fresh: { next: unit, prev: unit } });
+			this.notifyUpdateSequence({ prev: oldUnit.prev, next: oldUnit.next, stale: { next: oldUnit, prev: oldUnit }, fresh: { next: unit, prev: unit } });
 		}
 	}
 
@@ -157,7 +157,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 			range.prev = prev;
 			(prev || range).next = null;
 			const value = target.pop();
-			this.notifyPatch({ prev, next: null, stale: { next: unit, prev: unit }, fresh: null });
+			this.notifyUpdateSequence({ prev, next: null, stale: { next: unit, prev: unit }, fresh: null });
 			return value;
 		}
 	}
@@ -176,7 +176,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 			}
 			range.prev = prev;
 			this[TARGET].push(...items);
-			this.notifyPatch({ prev: projection[oldLength - 1], next: null, stale: null, fresh: { next: projection[oldLength], prev } });
+			this.notifyUpdateSequence({ prev: projection[oldLength - 1], next: null, stale: null, fresh: { next: projection[oldLength], prev } });
 		}
 		return target.length;
 	}
@@ -196,7 +196,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 		const target = this[TARGET];
 		if (target.length) {
 			target.reverse();
-			const stale: UnitRange<T> = { next: projection[0], prev: projection[target.length - 1] };
+			const stale: SequenceRange<T> = { next: projection[0], prev: projection[target.length - 1] };
 			let prev: Unit<T>;
 			for (const value of target) {
 				const unit: Unit<T> = { prev, next: null, value };
@@ -204,7 +204,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 				prev = unit;
 			}
 			range.prev = prev;
-			this.notifyPatch({ prev: null, next: null, stale, fresh: range });
+			this.notifyUpdateSequence({ prev: null, next: null, stale, fresh: range });
 		}
 		return this;
 	}
@@ -219,7 +219,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 			range.next = next;
 			(next || range).prev = null;
 			const value = target.shift();
-			this.notifyPatch({ prev: null, next, stale: { next: unit, prev: unit }, fresh: null });
+			this.notifyUpdateSequence({ prev: null, next, stale: { next: unit, prev: unit }, fresh: null });
 			return value;
 		}
 	}
@@ -239,7 +239,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 		const target = this[TARGET];
 		if (target.length) {
 			target.sort(compareFn);
-			const stale: UnitRange<T> = { next: projection[0], prev: projection[target.length - 1] };
+			const stale: SequenceRange<T> = { next: projection[0], prev: projection[target.length - 1] };
 			let prev: Unit<T>;
 			for (const value of target) {
 				const unit: Unit<T> = { prev, next: null, value };
@@ -247,7 +247,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 				prev = unit;
 			}
 			range.prev = prev;
-			this.notifyPatch({ prev: null, next: null, stale, fresh: range });
+			this.notifyUpdateSequence({ prev: null, next: null, stale, fresh: range });
 		}
 		return this;
 	}
@@ -285,7 +285,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 		(next || range).prev = prev;
 		const stale = projection.splice(start, deleteCount, ...fresh);
 		const result = target.splice(start, deleteCount, ...items);
-		this.notifyPatch({
+		this.notifyUpdateSequence({
 			prev: projection[start - 1],
 			next,
 			stale: deleteCount > 0 ? { next: stale[0], prev: stale[deleteCount - 1] } : null,
@@ -312,7 +312,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 			(next || range).prev = prev;
 			projection.unshift(...fresh);
 			target.unshift(...items);
-			this.notifyPatch({ prev: null, next, stale: null, fresh: { next: fresh[0], prev: fresh[items.length - 1] }
+			this.notifyUpdateSequence({ prev: null, next, stale: null, fresh: { next: fresh[0], prev: fresh[items.length - 1] }
 			});
 		}
 		return target.length;
@@ -409,7 +409,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 		(next || range).prev = prev;
 		const stale = projection.splice(start, end - start, ...fresh);
 		target.fill(value, start, end);
-		this.notifyPatch({
+		this.notifyUpdateSequence({
 			prev: projection[start - 1],
 			next,
 			stale: { next: stale[0], prev: stale[stale.length - 1] },
@@ -450,7 +450,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 		}
 		const targetEnd = Math.min(targetStart + (end - start), length);
 		const offset = start - targetStart;
-		const stale: UnitRange<T> = { next: projection[targetStart], prev: projection[targetEnd - 1] };
+		const stale: SequenceRange<T> = { next: projection[targetStart], prev: projection[targetEnd - 1] };
 		let prev = projection[targetStart - 1];
 		for (let i = targetStart; i < targetEnd; i++) {
 			const unit: Unit<T> = { prev, next: null, value: target[i + offset] };
@@ -461,7 +461,7 @@ export class ObservableArray<T> extends PatchObservable<T> implements Array<T> {
 		prev.next = projection[targetEnd];
 		(projection[targetEnd] || range).prev = prev;
 		target.copyWithin(targetStart, start, end);
-		this.notifyPatch({ prev: projection[targetStart - 1], next: projection[targetEnd], stale, fresh: { next: projection[targetStart], prev: projection[targetEnd - 1] } });
+		this.notifyUpdateSequence({ prev: projection[targetStart - 1], next: projection[targetEnd], stale, fresh: { next: projection[targetStart], prev: projection[targetEnd - 1] } });
 		return this;
 	}
 

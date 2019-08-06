@@ -1,0 +1,33 @@
+import test from "ava";
+import { Sequence, sequenceToArray, Unit } from "../../src";
+
+test("patch processing", t => {
+	const events = [];
+	new Sequence<number>(observer => {
+		const a: Unit<number> = { prev: null, next: null, value: 7 };
+		observer.updateSequence({ prev: null, next: null, stale: null, fresh: { next: a, prev: a } });
+
+		const b: Unit<number> = { prev: a, next: null, value: 11 };
+		a.next = b;
+		observer.updateSequence({ prev: a, next: null, stale: null, fresh: { next: b, prev: b } });
+
+		a.next = null;
+		observer.updateSequence({ prev: a, next: null, stale: { next: b, prev: b }, fresh: null });
+
+		const c: Unit<number> = { prev: null, next: a, value: 13 };
+		a.prev = c;
+		observer.updateSequence({ prev: null, next: a, stale: null, fresh: { next: c, prev: c } });
+
+		observer.updateSequence({ prev: null, next: null, stale: { next: c, prev: a }, fresh: null });
+
+		observer.updateSequence({ prev: null, next: null, stale: null, fresh: null });
+	}).pipe(sequenceToArray).subscribe(event => events.push(event));
+	t.deepEqual(events, [
+		[7],
+		[7, 11],
+		[7],
+		[13, 7],
+		[],
+		[]
+	]);
+});

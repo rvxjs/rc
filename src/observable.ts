@@ -112,5 +112,5 @@ export class Observable<T> implements ObservableLike<T> {
 
 /** Check if a value is an observable. */
 export function isObservable(value: any): value is ObservableLike<any> {
-	return value && typeof value.subscribe === "function";
+	return value && typeof (value as ObservableLike<any>).subscribe === "function";
 }

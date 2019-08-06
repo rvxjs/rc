@@ -1,15 +1,15 @@
-import { Disposable, dispose, DisposeLogic } from "./disposable";
+import { dispose, DisposeLogic } from "./disposable";
 
 /** Represents a linear sequence of units that changes over time. */
-export interface PatchObservableLike<T> {
+export interface SequenceLike<T> {
 	/** Subscribe to updates. */
-	patches(observer?: Partial<PatchObserver<T>> | ((patch: Patch<T>) => void)): DisposeLogic;
+	subscribeToSequence(observer?: Partial<SequenceObserver<T>> | ((patch: SequencePatch<T>) => void)): DisposeLogic;
 }
 
 /** An observer for a linear sequence of units that changes over time. */
-export interface PatchObserver<T> {
+export interface SequenceObserver<T> {
 	/** Indicate, that the target sequence has changed. */
-	patch(patch: Patch<T>): void;
+	updateSequence(patch: SequencePatch<T>): void;
 	/** Indicate, that an error occurred. The target sequence stays the same. */
 	reject(error: any): void;
 }
@@ -24,7 +24,7 @@ export interface PatchObserver<T> {
  * The validity of patch information is only ensured for the current immediate
  * execution, as the underlying data structures might change over time.
  */
-export interface Patch<T> {
+export interface SequencePatch<T> {
 	/**
 	 * The previous unit that was not affected by the patch
 	 * or null if the first unit of a sequence has changed.
@@ -36,13 +36,13 @@ export interface Patch<T> {
 	 */
 	readonly next: ReadonlyUnit<T>;
 	/** The range of units that has been inserted or null if no units have been inserted. */
-	readonly fresh: ReadonlyUnitRange<T>;
+	readonly fresh: ReadonlySequenceRange<T>;
 	/** The range of units that has been deleted or null if no units have been deleted. */
-	readonly stale: ReadonlyUnitRange<T>;
+	readonly stale: ReadonlySequenceRange<T>;
 }
 
 /** Represents a non-empty sequence of units. */
-export interface UnitRange<T> {
+export interface SequenceRange<T> {
 	/** The first unit that is included in the range. */
 	next: Unit<T>;
 	/** The last unit that is included in the range. */
@@ -50,7 +50,7 @@ export interface UnitRange<T> {
 }
 
 /** Represents a non-empty sequence of units. */
-export interface ReadonlyUnitRange<T> extends UnitRange<T> {
+export interface ReadonlySequenceRange<T> extends SequenceRange<T> {
 	/** The first unit that is included in the range. */
 	readonly next: ReadonlyUnit<T>;
 	/** The last unit that is included in the range. */
@@ -75,7 +75,7 @@ export interface ReadonlyUnit<T> extends Unit<T> {
 	readonly next: ReadonlyUnit<T>;
 }
 
-export type PatchObservableOperator<T, U, A extends any[]> = (source: PatchObservableLike<T>, ...args: A) => U;
+export type SequenceOperator<T, U, A extends any[]> = (source: SequenceLike<T>, ...args: A) => U;
 
 const OBSERVERS = Symbol("observers");
 const STARTED = Symbol("started");
@@ -86,10 +86,10 @@ const DISPOSAL = Symbol("disposal");
  *
  * When a new observer subscribes, the patch observable must emit an individual patch representing the latest state if available.
  */
-export class PatchObservable<T> implements PatchObservableLike<T> {
+export class Sequence<T> implements SequenceLike<T> {
 	public constructor(
-		awake?: (observer: PatchObserver<T>) => DisposeLogic,
-		onSubscribe?: (observer: Partial<PatchObserver<T>>) => void
+		awake?: (observer: SequenceObserver<T>) => DisposeLogic,
+		onSubscribe?: (observer: Partial<SequenceObserver<T>>) => void
 	) {
 		if (awake) {
 			this.awake = awake;
@@ -99,7 +99,7 @@ export class PatchObservable<T> implements PatchObservableLike<T> {
 		}
 	}
 
-	private readonly [OBSERVERS] = new Set<Partial<PatchObserver<T>>>();
+	private readonly [OBSERVERS] = new Set<Partial<SequenceObserver<T>>>();
 	private [STARTED] = false;
 	private [DISPOSAL]: DisposeLogic = null;
 
@@ -107,21 +107,21 @@ export class PatchObservable<T> implements PatchObservableLike<T> {
 	 * Called, when the first observer subscribes.
 	 * @returns Dispose logic that is disposed when the last observer unsubscribes.
 	 */
-	protected awake(observer: PatchObserver<T>): DisposeLogic {
+	protected awake(observer: SequenceObserver<T>): DisposeLogic {
 	}
 
 	/**
 	 * Called before an observer is added to this observable.
 	 * @param observer The observer. Note that the observer may be partially implemented.
 	 */
-	protected onSubscribe(observer: Partial<PatchObserver<T>>) {
+	protected onSubscribe(observer: Partial<SequenceObserver<T>>) {
 	}
 
 	/** Notify all observers that the target sequence has changed. */
-	protected notifyPatch(patch: Patch<T>) {
+	protected notifyUpdateSequence(patch: SequencePatch<T>) {
 		for (const observer of this[OBSERVERS]) {
-			if (observer.patch) {
-				observer.patch(patch);
+			if (observer.updateSequence) {
+				observer.updateSequence(patch);
 			}
 		}
 	}
@@ -135,15 +135,15 @@ export class PatchObservable<T> implements PatchObservableLike<T> {
 		}
 	}
 
-	public patches(observer?: Partial<PatchObserver<T>> | ((patch: Patch<T>) => void)): DisposeLogic {
-		const observerObj = typeof observer === "function" ? { patch: observer } : (observer || { });
+	public subscribeToSequence(observer?: Partial<SequenceObserver<T>> | ((patch: SequencePatch<T>) => void)): DisposeLogic {
+		const observerObj = typeof observer === "function" ? { updateSequence: observer } : (observer || { });
 		this.onSubscribe(observerObj);
 		this[OBSERVERS].add(observerObj);
 
 		if (!this[STARTED]) {
 			this[STARTED] = true;
 			this[DISPOSAL] = this.awake({
-				patch: this.notifyPatch.bind(this),
+				updateSequence: this.notifyUpdateSequence.bind(this),
 				reject: this.notifyReject.bind(this)
 			});
 		}
@@ -157,21 +157,21 @@ export class PatchObservable<T> implements PatchObservableLike<T> {
 	}
 
 	/** Apply an operator to this observable and get the result. */
-	public pipe<U, A extends any[]>(operator: PatchObservableOperator<T, U, A>, ...args: A) {
+	public pipe<U, A extends any[]>(operator: SequenceOperator<T, U, A>, ...args: A) {
 		return operator(this, ...args);
 	}
 
 	/** Create an empty patch observable that never changes. */
 	public static empty() {
-		const patch: Patch<any> = { prev: null, next: null, stale: null, fresh: null };
-		return new PatchObservable<any>(null, observer => {
-			observer.patch(patch);
+		const patch: SequencePatch<any> = { prev: null, next: null, stale: null, fresh: null };
+		return new Sequence<any>(null, observer => {
+			observer.updateSequence(patch);
 		});
 	}
 
 	/** Create a patch observable that never changes. */
 	public static fixed<T>(values: Iterable<T>) {
-		const range: UnitRange<T> = { next: null, prev: null };
+		const range: SequenceRange<T> = { next: null, prev: null };
 		let prev: Unit<T> = null;
 		for (const value of values) {
 			const unit: Unit<T> = { prev, next: null, value };
@@ -180,19 +180,19 @@ export class PatchObservable<T> implements PatchObservableLike<T> {
 		}
 		range.prev = prev;
 		if (prev) {
-			const patch: Patch<T> = { prev: null, next: null, stale: null, fresh: range };
-			return new PatchObservable<T>(null, observer => {
-				if (observer.patch) {
-					observer.patch(patch);
+			const patch: SequencePatch<T> = { prev: null, next: null, stale: null, fresh: range };
+			return new Sequence<T>(null, observer => {
+				if (observer.updateSequence) {
+					observer.updateSequence(patch);
 				}
 			});
 		} else {
-			return PatchObservable.empty();
+			return Sequence.empty();
 		}
 	}
 }
 
 /** Check if a value is an observable. */
-export function isPatchObservable(value: any): value is PatchObservableLike<any> {
-	return value && typeof value.patches === "function";
+export function isSequence(value: any): value is SequenceLike<any> {
+	return value && typeof (value as SequenceLike<any>).subscribeToSequence === "function";
 }

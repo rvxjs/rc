@@ -1,6 +1,6 @@
 import test, { ExecutionContext } from "ava";
-import { ObservableArray, unitsToArray, unitsToReverseArray } from "../src";
-import { validatePatch } from "../src/testing/patch-observable";
+import { ObservableArray, sequenceToArray, sequenceToReverseArray } from "../src";
+import { validatePatch } from "../src/testing/sequence";
 
 test("instance (proxy)", t => {
 	const arr = new ObservableArray();
@@ -395,14 +395,14 @@ test("copyWithin (negative end)", t => {
 
 function createArray<T>(t: ExecutionContext, events?: T[][]) {
 	const arr = new ObservableArray<T>();
-	arr.patches(validatePatch);
-	arr.pipe(unitsToArray).subscribe(values => {
+	arr.subscribeToSequence(validatePatch);
+	arr.pipe(sequenceToArray).subscribe(values => {
 		if (events) {
 			events.push(values);
 		}
 		t.deepEqual(values, Array.from(arr));
 	});
-	arr.pipe(unitsToReverseArray).subscribe(values => {
+	arr.pipe(sequenceToReverseArray).subscribe(values => {
 		t.deepEqual(values, Array.from(arr).reverse());
 	});
 	return arr;

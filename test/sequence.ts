@@ -1,11 +1,11 @@
 import test from "ava";
-import { PatchObservable, Unit } from "../src";
-import { validatePatch } from "../src/testing/patch-observable";
+import { Sequence, Unit } from "../src";
+import { validatePatch } from "../src/testing/sequence";
 
 test("fixed (empty)", t => {
-	const source = PatchObservable.fixed([]);
+	const source = Sequence.fixed([]);
 	const events = [];
-	source.patches(patch => {
+	source.subscribeToSequence(patch => {
 		validatePatch(patch);
 		events.push(patch);
 	});
@@ -15,9 +15,9 @@ test("fixed (empty)", t => {
 });
 
 test("fixed", t => {
-	const source = PatchObservable.fixed(["foo", "bar"]);
+	const source = Sequence.fixed(["foo", "bar"]);
 	const events = [];
-	source.patches(patch => {
+	source.subscribeToSequence(patch => {
 		validatePatch(patch);
 		events.push(patch);
 	});
