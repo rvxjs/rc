@@ -1,5 +1,7 @@
+export * from "./filter-hash";
 export * from "./filter-sequence";
 export * from "./filter";
+export * from "./hash-to-map";
 export * from "./join";
 export * from "./map-sequence";
 export * from "./map";

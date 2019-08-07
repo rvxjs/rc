@@ -31,7 +31,7 @@ export interface HashPatch<K, V> {
 	readonly stale: ReadonlyMap<K, V>;
 }
 
-export type MapObservableOperator<K, V, U, A extends any[]> = (source: HashLike<K, V>, ...args: A) => U;
+export type HashOperator<K, V, U, A extends any[]> = (source: HashLike<K, V>, ...args: A) => U;
 
 const OBSERVERS = Symbol("observers");
 const STARTED = Symbol("started");
@@ -113,7 +113,7 @@ export class Hash<K, V> implements HashLike<K, V> {
 	}
 
 	/** Apply an operator to this observable and get the result. */
-	public pipe<U, A extends any[]>(operator: MapObservableOperator<K, V, U, A>, ...args: A) {
+	public pipe<U, A extends any[]>(operator: HashOperator<K, V, U, A>, ...args: A) {
 		return operator(this, ...args);
 	}
 
@@ -141,6 +141,6 @@ export class Hash<K, V> implements HashLike<K, V> {
 }
 
 /** Check if a value is an observable. */
-export function isMapObservable(value: any): value is HashLike<any, any> {
+export function isHash(value: any): value is HashLike<any, any> {
 	return value && typeof (value as HashLike<any, any>).subscribeToHash === "function";
 }
