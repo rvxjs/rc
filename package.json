@@ -12,11 +12,11 @@
 		"prepack": "npm run build"
 	},
 	"devDependencies": {
-		"ava": "^2.2.0",
-		"concurrently": "^4.1.1",
-		"rimraf": "^2.6.3",
-		"tslint": "^5.18.0",
-		"typescript": "^3.5.3"
+		"ava": "^2.4.0",
+		"concurrently": "^4.1.2",
+		"rimraf": "^3.0.0",
+		"tslint": "^5.20.0",
+		"typescript": "^3.6.3"
 	},
 	"ava": {
 		"files": [
