@@ -8,11 +8,11 @@
  */
 export class Observable<T> {
 	/** Set of current observers */
-	#observers: Set<Observable.ObserverFn<T>>;
+	readonly #observers: Set<Observable.ObserverFn<T>>;
 	/** The activation function */
-	#activate: Observable.ActivateFn<T>;
+	readonly #activate: Observable.ActivateFn<T>;
 	/** The compute function */
-	#compute: Observable.ComputeFn<T>;
+	readonly #compute: Observable.ComputeFn<T>;
 	/** True, if this observable is currently active */
 	#active: boolean;
 	/** The current value when active, otherwise undefined */
@@ -20,7 +20,7 @@ export class Observable<T> {
 	/** Current deactivation function */
 	#deactivate: Observable.DeactivateFn | void;
 	/** Function to schedule deactivation */
-	#stop: () => void;
+	readonly #stop: () => void;
 
 	/**
 	 * Create a new observable.
