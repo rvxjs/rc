@@ -33,6 +33,10 @@ export class Subject<T> extends Observable<T> {
 		this.#value = value;
 	}
 
+	public get value() {
+		return this.#value;
+	}
+
 	public set value(value: T) {
 		this.#value = value;
 		this.#update?.(value);
