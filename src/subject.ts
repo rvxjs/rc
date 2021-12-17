@@ -1,4 +1,4 @@
-import { Observable } from ".";
+import { Observable } from "./observable";
 
 /**
  * Represents an atomic value that can be changed over time and observed.
@@ -28,16 +28,9 @@ export class Subject<T> extends Observable<T> {
 			this.#update = update;
 			return () => {
 				this.#update = undefined;
-			}
+			};
 		}, () => this.#value, true);
 		this.#value = value;
-	}
-
-	/**
-	 * Get or set the current value.
-	 */
-	public get value(): T {
-		return this.#value;
 	}
 
 	public set value(value: T) {
