@@ -1,0 +1,6 @@
+/.github
+/test
+/test_out
+/.editorconfig
+/ava*
+/tsconfig*
